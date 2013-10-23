@@ -71,7 +71,7 @@
 Summary: PHP scripting language for creating dynamic web sites
 Name: %{name}
 Version: 5.5.5
-Release: 1.ius%{?dist}
+Release: 2.ius%{?dist}
 # All files licensed under PHP version 3.01, except
 # Zend is licensed under Zend
 # TSRM is licensed under BSD
@@ -122,6 +122,8 @@ Patch46: php-5.4.9-fixheader.patch
 # drop "Configure command" from phpinfo output
 Patch47: php-5.4.9-phpinfo.patch
 
+BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+
 
 # Fixes for tests
 
@@ -129,7 +131,12 @@ Patch47: php-5.4.9-phpinfo.patch
 BuildRequires: bzip2-devel, curl-devel >= 7.9
 BuildRequires: httpd-devel >= 2.0.46-1, pam-devel
 BuildRequires: libstdc++-devel, openssl-devel
+%if 0%{?rhel} >= 6
+# For Sqlite3 extension
 BuildRequires: sqlite-devel >= 3.6.0
+%else
+BuildRequires: sqlite-devel >= 3.0.0
+%endif
 BuildRequires: zlib-devel, smtpdaemon, libedit-devel
 BuildRequires: pcre-devel >= 6.6
 BuildRequires: bzip2, perl, libtool >= 1.4.3, gcc-c++
@@ -826,6 +833,7 @@ BuildRequires: recode-devel
 The php-recode package contains a dynamic shared object that will add
 support for using the recode library to PHP.
 
+%if 0%{?rhel} >= 6
 %package intl
 Summary: Internationalization extension for PHP applications
 Group: System Environment/Libraries
@@ -839,6 +847,7 @@ BuildRequires: libicu-devel >= 4.0
 %description intl
 The php-intl package contains a dynamic shared object that will add
 support for using the ICU library to PHP.
+%endif
 
 %package enchant
 Summary: Human Language and Character Encoding Support
@@ -970,12 +979,18 @@ cp %{SOURCE50} .
 
 
 %build
+%if 0%{?rhel} >= 6
 # aclocal workaround - to be improved
 cat `aclocal --print-ac-dir`/{libtool,ltoptions,ltsugar,ltversion,lt~obsolete}.m4 >>aclocal.m4
+%endif
 
 # Force use of system libtool:
 libtoolize --force --copy
+%if 0%{?rhel} >= 6
 cat `aclocal --print-ac-dir`/{libtool,ltoptions,ltsugar,ltversion,lt~obsolete}.m4 >build/libtool.m4
+%else
+cat `aclocal --print-ac-dir`/libtool.m4 > build/libtool.m4
+%endif
 
 # Regenerate configure scripts (patches change config.m4's)
 touch configure.in
@@ -1099,7 +1114,11 @@ build --libdir=%{_libdir}/php \
       --with-pdo-pgsql=shared,%{_prefix} \
       --with-pdo-sqlite=shared,%{_prefix} \
       --with-pdo-dblib=shared,%{_prefix} \
+%if 0%{?rhel} >= 6
       --with-sqlite3=shared,%{_prefix} \
+%else
+      --without-sqlite3 \
+%endif
 %if %{with_json}
       --enable-json=shared \
 %else
@@ -1123,7 +1142,9 @@ build --libdir=%{_libdir}/php \
       --enable-posix=shared \
       --with-unixODBC=shared,%{_prefix} \
       --enable-fileinfo=shared \
+%if 0%{?rhel} >= 6
       --enable-intl=shared \
+%endif
       --with-icu-dir=%{_prefix} \
       --with-enchant=shared,%{_prefix} \
       --with-recode=shared,%{_prefix}
@@ -1242,7 +1263,11 @@ build --includedir=%{_includedir}/php-zts \
       --with-pdo-pgsql=shared,%{_prefix} \
       --with-pdo-sqlite=shared,%{_prefix} \
       --with-pdo-dblib=shared,%{_prefix} \
+%if 0%{?rhel} >= 6
       --with-sqlite3=shared,%{_prefix} \
+%else
+      --without-sqlite3 \
+%endif
 %if %{with_json}
       --enable-json=shared \
 %else
@@ -1266,7 +1291,9 @@ build --includedir=%{_includedir}/php-zts \
       --enable-posix=shared \
       --with-unixODBC=shared,%{_prefix} \
       --enable-fileinfo=shared \
+%if 0%{?rhel} >= 6
       --enable-intl=shared \
+%endif
       --with-icu-dir=%{_prefix} \
       --with-enchant=shared,%{_prefix} \
       --with-recode=shared,%{_prefix}
@@ -1456,10 +1483,14 @@ for mod in pgsql odbc ldap snmp xmlrpc imap \
     simplexml bz2 calendar ctype exif ftp gettext gmp iconv \
     sockets tokenizer opcache \
     pdo pdo_pgsql pdo_odbc pdo_sqlite \
-    sqlite3  interbase pdo_firebird \
-    enchant phar fileinfo intl \
+    interbase pdo_firebird \
+    enchant phar fileinfo \
     mcrypt tidy pdo_dblib mssql pspell curl wddx \
     posix shmop sysvshm sysvsem sysvmsg recode xml \
+%if 0%{?rhel} >= 6
+    sqlite3  \
+    intl \
+%endif
 %if %{with_json}
     json \
 %endif
@@ -1529,7 +1560,9 @@ cat files.shmop files.sysv* files.posix > files.process
 # Package sqlite3 and pdo_sqlite with pdo; isolating the sqlite dependency
 # isn't useful at this time since rpm itself requires sqlite.
 cat files.pdo_sqlite >> files.pdo
+%if 0%{?rhel} >= 6
 cat files.sqlite3 >> files.pdo
+%endif
 
 # Package zip, curl, phar and fileinfo in -common.
 cat files.curl files.phar files.fileinfo \
@@ -1706,7 +1739,9 @@ exit 0
 %files tidy -f files.tidy
 %files mssql -f files.mssql
 %files pspell -f files.pspell
+%if 0%{?rhel} >= 6
 %files intl -f files.intl
+%endif
 %files process -f files.process
 %files recode -f files.recode
 %files interbase -f files.interbase
@@ -1717,6 +1752,14 @@ exit 0
 
 
 %changelog
+* Tue Oct 22 2013 Mark McKinstry <mmckinst@nexcess.net> - 5.5.5-2.ius
+- add BuildRoot for el5
+- conditional around sqlite3 since it requires sqlite3 >= 3.6.0 which is only on
+  el6 and above
+- conditional around intl module since it needs libicu >= 4.0 which is only on
+  el6 and above
+- copy aclocal and libtool conditional stuff from php53u
+
 * Thu Oct 17 2013 Ben Harper <ben.harper@rackspace.com> - 5.5.5-1.ius
 - latest release, 5.5.5
 
